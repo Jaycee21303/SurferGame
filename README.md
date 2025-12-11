@@ -9,7 +9,7 @@ Once GitHub Pages is enabled for the repository root, the game will be available
 https://jgore2183.github.io/SurferGame/
 ```
 
-You can click that link directly: <https://jgore2183.github.io/SurferGame/>.
+You can click that link directly: <https://jayvee21303.github.io/SurferGame/>.
 
 Open that link on desktop or mobile and use touch, mouse, or spacebar to carve the ocean.
 
