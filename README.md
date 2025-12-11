@@ -6,8 +6,10 @@ An HTML5 canvas surfing racer inspired by classic slope gliders. Dive down the f
 Once GitHub Pages is enabled for the repository root, the game will be available at:
 
 ```
-https://<your-github-username>.github.io/SurferGame/
+https://jgore2183.github.io/SurferGame/
 ```
+
+You can click that link directly: <https://jgore2183.github.io/SurferGame/>.
 
 Open that link on desktop or mobile and use touch, mouse, or spacebar to carve the ocean.
 

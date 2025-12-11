@@ -82,15 +82,29 @@ window.addEventListener('keyup', (event) => {
   }
 });
 
-canvas.addEventListener('mousedown', () => handleInput(true));
-canvas.addEventListener('mouseup', () => handleInput(false));
-canvas.addEventListener('mouseleave', () => handleInput(false));
-canvas.addEventListener('touchstart', (event) => {
-  event.preventDefault();
-  handleInput(true);
-});
-canvas.addEventListener('touchend', () => handleInput(false));
-canvas.addEventListener('touchcancel', () => handleInput(false));
+function bindPointerInput(target) {
+  target.addEventListener('mousedown', () => handleInput(true));
+  target.addEventListener('mouseup', () => handleInput(false));
+  target.addEventListener('mouseleave', () => handleInput(false));
+  target.addEventListener(
+    'touchstart',
+    (event) => {
+      event.preventDefault();
+      handleInput(true);
+    },
+    { passive: false },
+  );
+  target.addEventListener(
+    'touchend',
+    () => handleInput(false),
+    { passive: true },
+  );
+  target.addEventListener('touchcancel', () => handleInput(false));
+}
+
+bindPointerInput(canvas);
+bindPointerInput(window);
+window.addEventListener('blur', () => handleInput(false));
 
 function update(dt) {
   elapsed += dt;
