@@ -8,6 +8,7 @@ const hud = {
 };
 
 let holdDive = false;
+let divePressStart = null;
 let lastTime = performance.now();
 let cameraX = 0;
 let elapsed = 0;
@@ -63,24 +64,67 @@ function resetGame() {
 resetGame();
 
 function handleInput(isDown) {
-  holdDive = isDown;
+  if (isDown) {
+    if (!holdDive) divePressStart = performance.now();
+    holdDive = true;
+    return;
+  }
+
+  holdDive = false;
+  if (!surfer.airborne && divePressStart !== null) {
+    const heldMs = performance.now() - divePressStart;
+    if (heldMs < 240) {
+      surfer.vy = -320;
+      surfer.airborne = true;
+    }
+  }
+  divePressStart = null;
 }
 
-window.addEventListener('keydown', (event) => {
-  if (event.code === 'Space') {
-    event.preventDefault();
-    handleInput(true);
-  }
-  if (event.key.toLowerCase() === 'r') {
-    resetGame();
-  }
-});
+function isSpace(event) {
+  return event.code === 'Space' || event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space';
+}
 
-window.addEventListener('keyup', (event) => {
-  if (event.code === 'Space') {
-    handleInput(false);
-  }
-});
+function bindKeyboard(target) {
+  target.addEventListener(
+    'keydown',
+    (event) => {
+      if (isSpace(event)) {
+        event.preventDefault();
+        handleInput(true);
+      }
+      if (event.key && event.key.toLowerCase() === 'r') {
+        resetGame();
+      }
+    },
+    { passive: false },
+  );
+
+  target.addEventListener(
+    'keyup',
+    (event) => {
+      if (isSpace(event)) {
+        handleInput(false);
+      }
+    },
+    { passive: false },
+  );
+
+  target.addEventListener(
+    'keypress',
+    (event) => {
+      // Some browsers fire only keypress for Space when focus is on canvas
+      if (isSpace(event)) {
+        event.preventDefault();
+        handleInput(true);
+      }
+    },
+    { passive: false },
+  );
+}
+
+bindKeyboard(window);
+bindKeyboard(document);
 
 function bindPointerInput(target) {
   target.addEventListener('mousedown', () => handleInput(true));
@@ -105,6 +149,9 @@ function bindPointerInput(target) {
 bindPointerInput(canvas);
 bindPointerInput(window);
 window.addEventListener('blur', () => handleInput(false));
+canvas.addEventListener('mousedown', () => canvas.focus());
+canvas.addEventListener('touchstart', () => canvas.focus());
+setTimeout(() => canvas.focus(), 50);
 
 function update(dt) {
   elapsed += dt;
