@@ -7,11 +7,14 @@ const hud = {
   height: document.getElementById('height'),
 };
 
-let holdDive = false;
-let divePressStart = null;
 let lastTime = performance.now();
 let cameraX = 0;
 let elapsed = 0;
+
+const controls = {
+  holding: false,
+  charge: 0,
+};
 
 const surfer = {
   worldX: 0,
@@ -63,110 +66,87 @@ function resetGame() {
 
 resetGame();
 
-function handleInput(isDown) {
-  if (isDown) {
-    if (!holdDive) divePressStart = performance.now();
-    holdDive = true;
-    return;
-  }
-
-  holdDive = false;
-  if (!surfer.airborne && divePressStart !== null) {
-    const heldMs = performance.now() - divePressStart;
-    if (heldMs < 240) {
-      surfer.vy = -320;
-      surfer.airborne = true;
-    }
-  }
-  divePressStart = null;
-}
-
 function isSpace(event) {
   return event.code === 'Space' || event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space';
 }
 
-function bindKeyboard(target) {
-  target.addEventListener(
-    'keydown',
-    (event) => {
-      if (isSpace(event)) {
-        event.preventDefault();
-        handleInput(true);
-      }
-      if (event.key && event.key.toLowerCase() === 'r') {
-        resetGame();
-      }
-    },
-    { passive: false },
-  );
-
-  target.addEventListener(
-    'keyup',
-    (event) => {
-      if (isSpace(event)) {
-        handleInput(false);
-      }
-    },
-    { passive: false },
-  );
-
-  target.addEventListener(
-    'keypress',
-    (event) => {
-      // Some browsers fire only keypress for Space when focus is on canvas
-      if (isSpace(event)) {
-        event.preventDefault();
-        handleInput(true);
-      }
-    },
-    { passive: false },
-  );
+function handleSpaceDown(event) {
+  if (!isSpace(event)) return;
+  event.preventDefault();
+  if (!controls.holding) {
+    controls.charge = 0;
+    controls.holding = true;
+  }
 }
 
-bindKeyboard(window);
-bindKeyboard(document);
+function handleSpaceUp(event) {
+  if (!isSpace(event)) return;
+  event.preventDefault();
+  controls.holding = false;
 
-function bindPointerInput(target) {
-  target.addEventListener('mousedown', () => handleInput(true));
-  target.addEventListener('mouseup', () => handleInput(false));
-  target.addEventListener('mouseleave', () => handleInput(false));
-  target.addEventListener(
-    'touchstart',
-    (event) => {
-      event.preventDefault();
-      handleInput(true);
-    },
-    { passive: false },
-  );
-  target.addEventListener(
-    'touchend',
-    () => handleInput(false),
-    { passive: true },
-  );
-  target.addEventListener('touchcancel', () => handleInput(false));
+  if (!surfer.airborne) {
+    const slope = slopeAt(surfer.worldX);
+    const slopeLift = Math.max(0, -slope) * 160;
+    const speedLift = Math.min(surfer.speed, 520) * 0.28;
+    const stored = Math.min(320, controls.charge * 360);
+    const jumpVelocity = -260 - slopeLift - speedLift - stored;
+    surfer.vy = jumpVelocity;
+    surfer.airborne = true;
+    surfer.rotation = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, Math.atan(slope) - 0.15));
+    controls.charge = 0;
+  }
 }
 
-bindPointerInput(canvas);
-bindPointerInput(window);
-window.addEventListener('blur', () => handleInput(false));
-canvas.addEventListener('mousedown', () => canvas.focus());
-canvas.addEventListener('touchstart', () => canvas.focus());
+window.addEventListener('keydown', (event) => {
+  if (event.key && event.key.toLowerCase() === 'r') {
+    resetGame();
+    return;
+  }
+  handleSpaceDown(event);
+});
+
+window.addEventListener('keyup', handleSpaceUp, { passive: false });
+window.addEventListener('keypress', handleSpaceDown, { passive: false });
+window.addEventListener('blur', () => {
+  controls.holding = false;
+  controls.charge = 0;
+});
 setTimeout(() => canvas.focus(), 50);
 
 function update(dt) {
   elapsed += dt;
-  const gravity = holdDive ? 1400 : 900;
-  surfer.vy += gravity * dt;
-
-  const airDrag = surfer.airborne ? 0.995 : 0.999;
-  surfer.speed = Math.max(90, Math.min(480, surfer.speed * airDrag + (holdDive ? 18 : 0) * dt));
-
-  surfer.worldX += surfer.speed * dt;
-  cameraX = surfer.worldX - canvas.width * 0.25;
+  let gravity = 1050;
 
   const terrainY = waveHeight(surfer.worldX);
   const slope = slopeAt(surfer.worldX);
   const angle = Math.atan(slope);
+
+  if (controls.holding) {
+    if (!surfer.airborne) {
+      controls.charge = Math.min(1.2, controls.charge + dt);
+    }
+    gravity += 650;
+  } else if (!surfer.airborne) {
+    controls.charge = Math.max(0, controls.charge - dt * 0.5);
+  }
+
+  surfer.vy += gravity * dt;
+
+  const drag = surfer.airborne ? 0.996 : 0.999;
+  surfer.speed = Math.max(80, Math.min(520, surfer.speed * drag));
+
+  // Dive acceleration along the slope when grounded
+  if (!surfer.airborne) {
+    const downhill = Math.max(0, -Math.sin(angle));
+    const drive = controls.holding ? 360 : 220;
+    surfer.speed += downhill * drive * dt;
+    if (controls.holding) {
+      surfer.speed += 45 * dt;
+    }
+  }
+
+  surfer.worldX += surfer.speed * dt;
+  cameraX = surfer.worldX - canvas.width * 0.25;
 
   const hoverLimit = canvas.height * 0.05;
   if (surfer.y < hoverLimit) {
@@ -177,31 +157,21 @@ function update(dt) {
   surfer.y += surfer.vy * dt;
 
   if (surfer.y >= terrainY) {
-    // Touching or below the wave
-    if (surfer.airborne && surfer.vy > 220) {
-      surfer.speed *= 0.98; // cushion a hard landing
-    }
+    const hardLanding = surfer.airborne && surfer.vy > 220;
     surfer.airborne = false;
     surfer.y = terrainY;
     if (surfer.vy > 0) surfer.vy = 0;
 
-    // Accelerate along the slope: downhill boosts, uphill slows
-    const slopeBoost = -Math.sin(angle) * 250 * dt;
-    surfer.speed = Math.max(80, Math.min(520, surfer.speed + slopeBoost));
-
-    // If the wave curves upward sharply while the player releases dive, launch
-    const launchReady = slope < -0.6 && !holdDive;
-    if (launchReady) {
-      surfer.vy = Math.min(-500, slope * -420);
-      surfer.airborne = true;
+    if (hardLanding) {
+      surfer.speed *= 0.97;
     }
 
-    surfer.rotation += (angle - surfer.rotation) * 0.2;
+    // Re-align to the water surface
+    surfer.rotation += (angle - surfer.rotation) * 0.25;
   } else {
-    // Airborne
     surfer.airborne = true;
     const targetAngle = Math.atan2(surfer.vy, surfer.speed);
-    surfer.rotation += (targetAngle - surfer.rotation) * 0.04;
+    surfer.rotation += (targetAngle - surfer.rotation) * 0.05;
   }
 }
 
@@ -258,44 +228,54 @@ function drawSurfer() {
 
   // Surfboard
   ctx.save();
-  ctx.translate(-12, 0);
+  ctx.translate(-10, 0);
   ctx.rotate(0.06);
   ctx.fillStyle = '#ffd166';
   ctx.strokeStyle = '#e49c2f';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 42, 10, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, 46, 8, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.restore();
 
   // Body
-  ctx.fillStyle = '#f4f7fb';
+  ctx.fillStyle = '#e9f1fb';
   ctx.strokeStyle = '#1f4b6f';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(6, -10, 18, 22, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(8, -8, 12, 26, -0.15, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   // Wetsuit
   ctx.fillStyle = '#1f7a9c';
   ctx.beginPath();
-  ctx.ellipse(6, 4, 15, 14, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(8, 6, 10, 16, -0.15, 0, Math.PI * 2);
   ctx.fill();
+
+  // Arms
+  ctx.strokeStyle = '#1f4b6f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-6, -2);
+  ctx.lineTo(16, -10);
+  ctx.moveTo(-4, 6);
+  ctx.lineTo(18, 2);
+  ctx.stroke();
 
   // Head
   ctx.fillStyle = '#fefefe';
   ctx.beginPath();
-  ctx.arc(22, -24, 10, 0, Math.PI * 2);
+  ctx.arc(20, -26, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   // Sunglasses
   ctx.fillStyle = '#0c1a24';
-  ctx.fillRect(16, -28, 8, 6);
-  ctx.fillRect(25, -28, 8, 6);
-  ctx.fillRect(24, -25, 4, 3);
+  ctx.fillRect(14, -31, 7, 5);
+  ctx.fillRect(23, -31, 7, 5);
+  ctx.fillRect(21, -28, 4, 3);
 
   // Spray
   if (!surfer.airborne) {

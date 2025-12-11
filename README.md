@@ -9,14 +9,11 @@ Once GitHub Pages is enabled for the repository root, the game will be available
 https://jaycee21303.github.io/SurferGame/
 ```
 
-You can click that link directly: <https://jaycee21303.github.io/SurferGame/>.
-Open that link on desktop or mobile and use touch, mouse, or spacebar to carve the ocean. If keyboard controls ever feel unrespo
-nsive, click the canvas once to focus it, then tap or hold the spacebar to dive and release for a jump.
+You can click that link directly: <https://jaycee21303.github.io/SurferGame/>. Open that link on desktop or mobile and use the spacebar to carve the ocean.
 
 ## Controls
-- **Quick tap** space/mouse/touch: hop for a small jump.
-- **Hold** space, mouse, or touch: dive down the wave for speed.
-- **Release**: glide uphill and catch air; release off an uphill face to launch.
+- **Hold space** to dive down the face of a wave and build speed.
+- **Release space** at the top of a wave to launch into the air.
 - **R**: restart the run.
 
 ## Local development
