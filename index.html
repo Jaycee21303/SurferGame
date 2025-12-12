@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surfer Slider</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hud">
+    <div>
+      <h1>Surfer Slider</h1>
+      <p>Ride the rolling waves! Hold <strong>Space</strong> to dive, then release to launch.</p>
+    </div>
+    <div class="stats">
+      <span id="speed">Speed: 0</span>
+      <span id="distance">Distance: 0 m</span>
+      <span id="height">Height: 0</span>
+    </div>
+  </header>
+
+  <main>
+    <canvas id="game" aria-label="Surfer Slider game" tabindex="0"></canvas>
+    <section class="info">
+      <p>Use your timing to dive downhill and launch off the next wave. Hold space to tuck and gain speed, release off an uphill face to pop into the air. Press <strong>R</strong> to restart.</p>
+    </section>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>

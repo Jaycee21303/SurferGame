@@ -1,0 +1,84 @@
+:root {
+  --sky-top: #78b7ff;
+  --sky-bottom: #b0e6ff;
+  --ocean-top: #2b6cb0;
+  --ocean-bottom: #16355c;
+  --text: #0a1c2c;
+  --accent: #ffd166;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  letter-spacing: 0.05em;
+}
+
+p {
+  margin: 0.25rem 0;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 1rem 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: linear-gradient(90deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35));
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.stats {
+  display: flex;
+  gap: 1rem;
+  font-weight: 600;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem 2rem;
+}
+
+#game {
+  width: min(1100px, 100vw - 2rem);
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  margin: 1.5rem 0 0.75rem;
+  background: transparent;
+  outline: none;
+}
+
+.info {
+  max-width: 720px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  line-height: 1.5;
+}
+
+strong {
+  color: var(--accent);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.15);
+}
