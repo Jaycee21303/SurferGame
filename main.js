@@ -9,7 +9,7 @@ const hud = {
 
 let lastTime = performance.now();
 let cameraX = 0;
-let elapsed = 0;
+let wavePhase = 0;
 
 const controls = {
   holding: false,
@@ -38,7 +38,7 @@ window.addEventListener('resize', resize);
 resize();
 
 function waveHeight(x) {
-  const t = elapsed * 0.4;
+  const t = wavePhase;
   const base = canvas.height * 0.65;
   const gentle = Math.sin(x * 0.007 + t) * 55;
   const rolling = Math.sin(x * 0.0035 - t * 1.3) * 80;
@@ -62,7 +62,7 @@ function resetGame() {
   surfer.rotation = 0;
   surfer.airborne = false;
   cameraX = -canvas.width * 0.2;
-  elapsed = 0;
+  wavePhase = 0;
 }
 
 resetGame();
@@ -88,10 +88,11 @@ function handleSpaceUp(event) {
   if (!surfer.airborne) {
     const slope = slopeAt(surfer.worldX);
     const uphill = Math.max(0, -slope);
-    const speedLift = Math.min(surfer.speed, 520) * 0.25;
-    const chargeRatio = Math.min(1, controls.charge / 1.05);
-    const stored = 220 * (chargeRatio * (2 - chargeRatio)); // ease-out charge
-    const jumpVelocity = -220 - stored - uphill * 140 - speedLift;
+    const speedLift = Math.min(surfer.speed, 520) * 0.22;
+    const chargeRatio = Math.min(1, controls.charge / 1.1);
+    const easedCharge = 1 - Math.pow(1 - chargeRatio, 2);
+    const stored = 240 * easedCharge; // eased charge curve for smoother takeoff
+    const jumpVelocity = -235 - stored - uphill * 150 - speedLift;
     surfer.vy = jumpVelocity;
     surfer.airborne = true;
     surfer.rotation = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, Math.atan(slope) * 0.75 - 0.1));
@@ -117,12 +118,14 @@ window.addEventListener('blur', () => {
 setTimeout(() => canvas.focus(), 50);
 
 function update(dt) {
-  elapsed += dt;
   let gravity = 1050;
 
   const terrainY = waveHeight(surfer.worldX);
   const slope = slopeAt(surfer.worldX);
   const angle = Math.atan(slope);
+
+  const waveFlow = 0.35 + surfer.speed * 0.0006 + (surfer.airborne ? 0.18 : 0) + (controls.holding && !surfer.airborne ? 0.05 : 0);
+  wavePhase += dt * waveFlow;
 
   surfer.airTime = surfer.airborne ? surfer.airTime + dt : 0;
 
@@ -235,116 +238,126 @@ function drawSurfer() {
   ctx.translate(screenX, screenY - 10);
   ctx.rotate(surfer.rotation);
 
-  // Surfboard base
+  // Surfboard base with deck stripes
   ctx.save();
-  ctx.translate(-12, 2);
+  ctx.translate(-10, 3);
   ctx.rotate(0.08);
-  ctx.fillStyle = '#ffd166';
-  ctx.strokeStyle = '#e49c2f';
-  ctx.lineWidth = 2.5;
+  const deck = ctx.createLinearGradient(-46, -6, 50, 12);
+  deck.addColorStop(0, '#ffde85');
+  deck.addColorStop(1, '#ffb347');
+  ctx.fillStyle = deck;
+  ctx.strokeStyle = '#d88c1b';
+  ctx.lineWidth = 2.3;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 48, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, 48, 7.2, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillRect(-16, -3, 24, 6);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-18, -3.5);
+  ctx.lineTo(22, -2);
+  ctx.moveTo(-22, 1.5);
+  ctx.lineTo(18, 3);
+  ctx.stroke();
   ctx.restore();
 
-  // Rear foot
-  ctx.fillStyle = '#0f1d2c';
+  // Feet
+  ctx.fillStyle = '#0e1b2a';
   ctx.beginPath();
-  ctx.ellipse(-2, 6, 6, 3, 0.05, 0, Math.PI * 2);
+  ctx.ellipse(-3, 7, 6, 3, 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(21, 5, 7, 3.4, -0.08, 0, Math.PI * 2);
   ctx.fill();
 
-  // Front foot
+  // Legs and hips
+  ctx.strokeStyle = '#0d2c44';
+  ctx.lineWidth = 3.1;
+  ctx.fillStyle = '#155b7a';
   ctx.beginPath();
-  ctx.ellipse(20, 4, 7, 3.5, -0.08, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Legs and torso (slim human form)
-  ctx.strokeStyle = '#10334b';
-  ctx.lineWidth = 3;
-  ctx.fillStyle = '#1b6b8c';
-  ctx.beginPath();
-  ctx.moveTo(-2, 2);
-  ctx.lineTo(4, -14);
-  ctx.lineTo(10, -18);
-  ctx.lineTo(18, -16);
-  ctx.lineTo(26, -4);
-  ctx.quadraticCurveTo(30, 6, 22, 10);
-  ctx.quadraticCurveTo(10, 12, 4, 8);
+  ctx.moveTo(-4, 3);
+  ctx.lineTo(4, -16);
+  ctx.quadraticCurveTo(10, -22, 18, -18);
+  ctx.lineTo(28, -4);
+  ctx.quadraticCurveTo(32, 6, 22, 12);
+  ctx.quadraticCurveTo(8, 14, 0, 9);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-
-  // Hip/short detail
-  ctx.fillStyle = '#0f4f6a';
+  ctx.fillStyle = '#0f425c';
   ctx.beginPath();
-  ctx.ellipse(10, -8, 13, 8, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(12, -6, 15, 9, -0.15, 0, Math.PI * 2);
   ctx.fill();
 
   // Back arm
-  ctx.strokeStyle = '#f4d9c6';
+  ctx.strokeStyle = '#f2d9c3';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(6, -18);
-  ctx.quadraticCurveTo(-8, -20, -12, -8);
+  ctx.quadraticCurveTo(-10, -22, -14, -6);
   ctx.stroke();
 
-  // Torso highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.beginPath();
-  ctx.ellipse(13, -14, 6, 12, -0.1, -Math.PI * 0.6, Math.PI * 0.6);
-  ctx.fill();
-
-  // Chest/shoulder line
-  ctx.strokeStyle = '#0f4f6a';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(6, -19);
-  ctx.lineTo(18, -20);
-  ctx.stroke();
-
-  // Front arm
-  ctx.strokeStyle = '#f4d9c6';
+  // Torso and wetsuit top
+  ctx.fillStyle = '#1d7aa1';
+  ctx.strokeStyle = '#0d2c44';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(18, -20);
-  ctx.quadraticCurveTo(32, -22, 34, -10);
+  ctx.moveTo(6, -22);
+  ctx.quadraticCurveTo(18, -26, 26, -16);
+  ctx.lineTo(28, -6);
+  ctx.quadraticCurveTo(26, 2, 18, 2);
+  ctx.lineTo(8, 0);
+  ctx.quadraticCurveTo(2, -4, 6, -22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(18, -14, 7, 11, -0.12, -Math.PI * 0.5, Math.PI * 0.6);
+  ctx.fill();
+
+  // Front arm
+  ctx.strokeStyle = '#f2d9c3';
+  ctx.lineWidth = 3.1;
+  ctx.beginPath();
+  ctx.moveTo(20, -18);
+  ctx.quadraticCurveTo(36, -22, 36, -6);
   ctx.stroke();
 
-  // Neck
-  ctx.strokeStyle = '#f4d9c6';
+  // Neck and head
+  ctx.strokeStyle = '#f2d9c3';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(18, -22);
   ctx.lineTo(18, -28);
   ctx.stroke();
 
-  // Head
-  ctx.fillStyle = '#f8e6d4';
-  ctx.strokeStyle = '#0f1d2c';
-  ctx.lineWidth = 2.5;
+  ctx.fillStyle = '#f7e2cc';
+  ctx.strokeStyle = '#0e1b2a';
+  ctx.lineWidth = 2.3;
   ctx.beginPath();
-  ctx.arc(18, -33, 9, 0, Math.PI * 2);
+  ctx.arc(18, -34, 9.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Hair
-  ctx.fillStyle = '#2a2a2a';
+  // Hair and face details
+  ctx.fillStyle = '#2b2b2b';
   ctx.beginPath();
   ctx.arc(16, -36, 9, Math.PI * 1.1, Math.PI * 1.9);
-  ctx.lineTo(25, -37);
-  ctx.quadraticCurveTo(20, -42, 14, -39);
+  ctx.lineTo(26, -37);
+  ctx.quadraticCurveTo(21, -43, 14, -39);
   ctx.fill();
-
-  // Facial line
-  ctx.strokeStyle = '#0f1d2c';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#0e1b2a';
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.moveTo(14, -32);
-  ctx.quadraticCurveTo(18, -31, 20, -32);
+  ctx.moveTo(14, -31);
+  ctx.quadraticCurveTo(18, -30, 20, -31);
   ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(22, -35, 1.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#0e1b2a';
+  ctx.fill();
 
   // Spray
   if (!surfer.airborne) {
