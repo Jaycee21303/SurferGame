@@ -1,24 +1,27 @@
-# Surfer Slider
+# Trenchfire: Starfall Run
 
-An HTML5 canvas surfing racer inspired by classic slope gliders. Dive down the face of a wave to pick up speed, release to launch off the next swell, and see how far you can ride.
+A fast, canvas-driven trench run shooter built for GitHub Pages. Fly the trench, carve up interceptors, and deliver the finishing shot against the Core Gate.
 
-## Play on GitHub Pages
-Once GitHub Pages is enabled for the repository root, the game will be available at:
-
-```
-https://jaycee21303.github.io/SurferGame/
-```
-
-You can click that link directly: <https://jaycee21303.github.io/SurferGame/>. Open that link on desktop or mobile and use the spacebar to carve the ocean.
+## Play
+Open `index.html` locally or deploy the repository to GitHub Pages. Everything is client-side — no build steps or dependencies.
 
 ## Controls
-- **Hold space** to dive down the face of a wave and build speed.
-- **Release space** at the top of a wave to launch into the air.
-- **R**: restart the run.
+- **Move:** WASD / Arrow Keys
+- **Boost:** Shift
+- **Fire:** Space / K
+- **Pause:** P or the on-screen button
 
-## Local development
-1. Clone the repo.
-2. Serve the root directory with any static server (for example `python -m http.server 8000`).
-3. Open `http://localhost:8000` in your browser.
+## Modes & Flow
+- **Launch Sortie:** Story flow across three escalating levels finishing with the Core Gate encounter.
+- **Practice Loop:** Endless scoring loop to master handling without level progression.
 
-No build steps or dependencies are required; everything is plain HTML, CSS, and JavaScript.
+Keep your multiplier alive by chaining hits. Shields soften impacts; hull damage ends the run.
+
+## Structure
+- `index.html` — Markup and UI overlays.
+- `style.css` — Neon-inspired HUD, cards, and canvas framing.
+- `main.js` — Game loop, spawning, collision, and rendering.
+
+## Notes
+- The game is tuned for 1200x720 but scales fluidly down to mobile widths.
+- No assets are required; everything is drawn in WebGL-free canvas for instant loads.
