@@ -271,6 +271,7 @@ function movePlayer(dt) {
     player.vx = (player.vx / speed) * max;
     player.vy = (player.vy / speed) * max;
   }
+}
 
   player.x += player.vx * dt;
   player.y += player.vy * dt;
