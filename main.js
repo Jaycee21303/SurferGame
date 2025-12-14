@@ -20,6 +20,8 @@ const COLORS = {
   cubePalette: ['#c6d2e0', '#9fb0c4', '#f45d5d'],
   player: '#6cf4ff',
   bolt: '#b7fbff',
+  enemy: '#c9d0ff',
+  enemyGlow: '#ff9f6a',
   uiAccent: '#7addff',
   wallOuter: '#111827',
   wallInner: '#1f2d42',
@@ -35,6 +37,7 @@ const GAME = {
   score: 0,
   multiplier: 1,
   spawnTimer: 0,
+  enemyTimer: 0,
 };
 
 const camera = {
@@ -66,12 +69,16 @@ const settings = {
   laneCount: 9,
   baseSpeed: 360,
   spawnInterval: 1.05,
+  enemyInterval: 2.4,
   wobble: 14,
 };
 
 let cubes = [];
 let bolts = [];
 let stars = [];
+let enemies = [];
+let enemyBolts = [];
+let explosions = [];
 
 const input = { keys: new Set() };
 
@@ -92,9 +99,13 @@ function resetGame(practice = false) {
   GAME.score = 0;
   GAME.multiplier = 1;
   GAME.spawnTimer = 0;
+  GAME.enemyTimer = 0.6;
   cubes = [];
   bolts = [];
   stars = createStars();
+  enemies = [];
+  enemyBolts = [];
+  explosions = [];
   Object.assign(player, {
     x: 0,
     y: 0,
@@ -154,6 +165,24 @@ function spawnRow() {
       wobble: Math.random() * Math.PI * 2,
     });
   }
+}
+
+function spawnEnemy() {
+  const lanes = settings.laneCount;
+  const spacing = settings.laneSpacing;
+  const lane = Math.floor(Math.random() * lanes);
+  const x = (lane - (lanes - 1) / 2) * spacing + (Math.random() - 0.5) * settings.wobble;
+  const type = Math.random() > 0.6 ? 'turret' : 'interceptor';
+  enemies.push({
+    x,
+    z: 1400 + Math.random() * 160,
+    size: type === 'turret' ? 66 : 58,
+    wobble: Math.random() * Math.PI * 2,
+    type,
+    hp: type === 'turret' ? 2 : 1,
+    fireCooldown: 0.3 + Math.random() * 0.6,
+    fireRate: type === 'turret' ? 1.6 : 1.2,
+  });
 }
 
 function movePlayer(dt) {
@@ -224,6 +253,33 @@ function updateCubes(dt) {
   GAME.score += dt * 8;
 }
 
+function updateEnemies(dt) {
+  const speed = settings.baseSpeed * (0.82 + GAME.elapsed * 0.025);
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    e.z -= speed * dt;
+    e.wobble += dt * (e.type === 'interceptor' ? 2.2 : 1.6);
+    e.x += Math.sin(e.wobble) * (e.type === 'interceptor' ? 34 : 12) * dt;
+    e.fireCooldown -= dt;
+    if (e.fireCooldown <= 0 && e.z > 120) {
+      enemyBolts.push({ x: e.x, z: e.z, speed: -980, life: 2.6 });
+      e.fireCooldown = e.fireRate;
+    }
+    if (e.z < -160) {
+      enemies.splice(i, 1);
+    }
+  }
+}
+
+function updateEnemyBolts(dt) {
+  for (let i = enemyBolts.length - 1; i >= 0; i--) {
+    const b = enemyBolts[i];
+    b.z += b.speed * dt;
+    b.life -= dt;
+    if (b.life <= 0 || b.z < -120) enemyBolts.splice(i, 1);
+  }
+}
+
 function handleCollisions() {
   for (let i = cubes.length - 1; i >= 0; i--) {
     const cube = cubes[i];
@@ -231,6 +287,7 @@ function handleCollisions() {
     if (Math.abs(cube.x - player.x) < (cube.size * 0.5 + player.w * 0.4) && Math.abs(cube.z - player.z) < cube.size * 0.65) {
       applyDamage(34);
       cubes.splice(i, 1);
+      addExplosion(cube.x, cube.z, cube.size * 0.4);
       continue;
     }
     for (let j = bolts.length - 1; j >= 0; j--) {
@@ -240,8 +297,45 @@ function handleCollisions() {
         cubes.splice(i, 1);
         GAME.score += 40 * GAME.multiplier;
         GAME.multiplier = Math.min(8, GAME.multiplier + 0.12);
+        addExplosion(cube.x, cube.z, cube.size * 0.35);
         break;
       }
+    }
+  }
+  GAME.distance += speed * dt;
+  GAME.score += dt * 8;
+}
+
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    if (Math.abs(enemy.x - player.x) < (enemy.size * 0.45 + player.w * 0.35) && Math.abs(enemy.z - player.z) < enemy.size * 0.65) {
+      applyDamage(40);
+      addExplosion(enemy.x, enemy.z, enemy.size * 0.5);
+      enemies.splice(i, 1);
+      continue;
+    }
+    for (let j = bolts.length - 1; j >= 0; j--) {
+      const bolt = bolts[j];
+      if (bolt.z >= enemy.z - enemy.size && bolt.z <= enemy.z + enemy.size && Math.abs(bolt.x - enemy.x) < enemy.size * 0.5) {
+        bolts.splice(j, 1);
+        enemy.hp -= 1;
+        if (enemy.hp <= 0) {
+          addExplosion(enemy.x, enemy.z, enemy.size * 0.6);
+          enemies.splice(i, 1);
+          GAME.score += 90 * GAME.multiplier;
+          GAME.multiplier = Math.min(9, GAME.multiplier + 0.18);
+        }
+        break;
+      }
+    }
+  }
+
+  for (let i = enemyBolts.length - 1; i >= 0; i--) {
+    const bolt = enemyBolts[i];
+    if (Math.abs(bolt.x - player.x) < 26 && bolt.z <= player.z + 42) {
+      enemyBolts.splice(i, 1);
+      applyDamage(26);
+      addExplosion(player.x, player.z + 40, 26);
     }
   }
 }
@@ -253,7 +347,11 @@ function applyDamage(amount) {
   player.hull -= (amount - shieldHit);
   player.invulnerable = 1.1;
   GAME.multiplier = Math.max(1, GAME.multiplier - 0.35);
-  if (player.hull <= 0) triggerGameOver('You clipped a cube and broke apart.');
+  if (player.hull <= 0) triggerGameOver('Your hull failed in the trench.');
+}
+
+function addExplosion(x, z, power = 28) {
+  explosions.push({ x, z, life: 0.6, power });
 }
 
 function updateHUD() {
@@ -276,10 +374,34 @@ function updateStars(dt) {
   });
 }
 
+function updateExplosions(dt) {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const e = explosions[i];
+    e.life -= dt;
+    if (e.life <= 0) explosions.splice(i, 1);
+  }
+}
+
 function drawStars() {
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   stars.forEach((s) => {
     ctx.fillRect(s.x, s.y, 2, 2);
+  });
+}
+
+function drawExplosions() {
+  explosions.forEach((e) => {
+    const pos = project(e.x, e.z);
+    const alpha = clamp(e.life / 0.6, 0, 1);
+    const size = e.power * pos.scale * (1.2 - alpha * 0.4);
+    const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, size);
+    grad.addColorStop(0, `rgba(255, 211, 140, ${alpha})`);
+    grad.addColorStop(0.5, `rgba(255, 126, 84, ${alpha * 0.8})`);
+    grad.addColorStop(1, 'rgba(30,20,10,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+    ctx.fill();
   });
 }
 
@@ -423,11 +545,43 @@ function drawCubes() {
   });
 }
 
+function drawEnemies() {
+  enemies.slice().sort((a, b) => b.z - a.z).forEach((e) => {
+    const pos = project(e.x, e.z);
+    const size = e.size * pos.scale;
+    ctx.save();
+    ctx.translate(pos.x, pos.y - size * 0.15);
+    ctx.scale(pos.scale, pos.scale);
+    ctx.fillStyle = COLORS.enemy;
+    ctx.strokeStyle = '#0f1421';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.55);
+    ctx.lineTo(size * 0.4, size * 0.3);
+    ctx.lineTo(-size * 0.4, size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = COLORS.enemyGlow;
+    ctx.fillRect(-size * 0.22, size * 0.1, size * 0.44, size * 0.12);
+    ctx.restore();
+  });
+}
+
 function drawBolts() {
   bolts.forEach((b) => {
     const pos = project(b.x, b.z);
     ctx.fillStyle = COLORS.bolt;
     ctx.fillRect(pos.x - 2, pos.y - 12, 4, 18);
+  });
+}
+
+function drawEnemyBolts() {
+  enemyBolts.forEach((b) => {
+    const pos = project(b.x, b.z);
+    ctx.fillStyle = COLORS.enemyGlow;
+    ctx.fillRect(pos.x - 2, pos.y - 18, 5, 24);
   });
 }
 
@@ -473,22 +627,33 @@ function loop(time) {
   if (GAME.mode === 'running') {
     GAME.elapsed += dt;
     GAME.spawnTimer -= dt;
+    GAME.enemyTimer -= dt;
     player.invulnerable = Math.max(0, player.invulnerable - dt);
     player.fireCooldown = Math.max(0, player.fireCooldown - dt);
     movePlayer(dt);
     updateBolts(dt);
+    updateEnemyBolts(dt);
     updateCubes(dt);
+    updateEnemies(dt);
+    updateExplosions(dt);
     handleCollisions();
     if (GAME.spawnTimer <= 0) {
       spawnRow();
       GAME.spawnTimer = settings.spawnInterval * clamp(1 - GAME.elapsed * 0.02, 0.45, 1.1);
+    }
+    if (GAME.enemyTimer <= 0) {
+      spawnEnemy();
+      GAME.enemyTimer = settings.enemyInterval * clamp(1 - GAME.elapsed * 0.018, 0.6, 1.4);
     }
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
   drawCubes();
+  drawEnemies();
   drawBolts();
+  drawEnemyBolts();
+  drawExplosions();
   drawShip();
   updateHUD();
   updateStars(dt);
