@@ -1,24 +1,26 @@
-# Surfer Slider
+# Cube Run: Trenchfire
 
-An HTML5 canvas surfing racer inspired by classic slope gliders. Dive down the face of a wave to pick up speed, release to launch off the next swell, and see how far you can ride.
+A cubefield-style trench runner rebuilt for GitHub Pages. Drift with asteroid-inspired handling, spray unlimited bolts, and thread ever-tighter cube walls while dueling trench sentries to chase distance.
 
-## Play on GitHub Pages
-Once GitHub Pages is enabled for the repository root, the game will be available at:
-
-```
-https://jaycee21303.github.io/SurferGame/
-```
-
-You can click that link directly: <https://jaycee21303.github.io/SurferGame/>. Open that link on desktop or mobile and use the spacebar to carve the ocean.
+## Play
+Open `index.html` locally or deploy the repository to GitHub Pages. No build steps or dependencies.
 
 ## Controls
-- **Hold space** to dive down the face of a wave and build speed.
-- **Release space** at the top of a wave to launch into the air.
-- **R**: restart the run.
+- **Move:** WASD / Arrow Keys (momentum-based)
+- **Fire:** Hold Space / K (unlimited)
+- **Pause:** P or the on-screen button
 
-## Local development
-1. Clone the repo.
-2. Serve the root directory with any static server (for example `python -m http.server 8000`).
-3. Open `http://localhost:8000` in your browser.
+## Flow
+- **Launch Run:** Endless scoring sprint with accelerating cube walls, enemy craft, and a growing multiplier.
+- **Practice Loop:** Same feel without worrying about separate progression.
 
-No build steps or dependencies are required; everything is plain HTML, CSS, and JavaScript.
+Maintain your multiplier by dodging or blasting cubes and hostile enemies. Colliding or taking laser hits drains shields and hull; break apart and the run ends with an explosion.
+
+## Structure
+- `index.html` — Markup and overlays for launch/game over.
+- `style.css` — HUD, cards, and backdrop styling.
+- `main.js` — Canvas loop, pseudo-3D projection, spawning, collisions, and controls.
+
+## Notes
+- Tuned for 1200x720 canvas; scales fluidly down to mobile widths.
+- Pure canvas — instant loads and GitHub Pages friendly.
