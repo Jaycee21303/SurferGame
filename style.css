@@ -1,11 +1,11 @@
 :root {
-  --bg: #080b13;
-  --panel: rgba(12, 16, 24, 0.85);
-  --panel-border: rgba(146, 178, 214, 0.45);
-  --accent: #8fd7ff;
-  --accent-2: #ffb449;
-  --text: #e6f1ff;
-  --muted: #9baac0;
+  --bg: #050812;
+  --panel: rgba(10, 16, 27, 0.9);
+  --panel-border: rgba(140, 175, 210, 0.4);
+  --accent: #8bd0ff;
+  --accent-2: #ffd08c;
+  --text: #e8f3ff;
+  --muted: #a2b0c4;
   --shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
 }
 
@@ -17,7 +17,7 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 30%, rgba(14, 27, 46, 0.5), rgba(8, 11, 19, 0.95)), #000;
+  background: radial-gradient(circle at 48% 28%, rgba(24, 40, 66, 0.55), rgba(6, 9, 18, 0.96)), #000;
   color: var(--text);
   font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
@@ -27,9 +27,9 @@ body {
 #backdrop {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, rgba(143, 215, 255, 0.12), transparent 35%),
-              linear-gradient(225deg, rgba(255, 134, 73, 0.18), transparent 40%),
-              radial-gradient(circle at 35% 25%, rgba(130, 240, 255, 0.16), transparent 45%);
+  background: linear-gradient(135deg, rgba(122, 206, 255, 0.16), transparent 35%),
+              linear-gradient(225deg, rgba(255, 181, 109, 0.16), transparent 40%),
+              radial-gradient(circle at 32% 22%, rgba(140, 220, 255, 0.16), transparent 45%);
   pointer-events: none;
   filter: blur(46px);
   z-index: 0;

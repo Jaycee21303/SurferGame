@@ -1,6 +1,6 @@
 # Cube Run: Trenchfire
 
-A cubefield-style trench runner rebuilt for GitHub Pages. Drift with asteroid-inspired handling, spray unlimited bolts, and thread ever-tighter cube walls while dueling trench sentries to chase distance.
+A cubefield-style trench runner rebuilt for GitHub Pages. Drift with asteroid-inspired handling, spray unlimited bolts, and thread ever-tighter Imperial-blue cube walls while dueling trench sentries to chase distance.
 
 ## Play
 Open `index.html` locally or deploy the repository to GitHub Pages. No build steps or dependencies.
@@ -11,7 +11,7 @@ Open `index.html` locally or deploy the repository to GitHub Pages. No build ste
 - **Pause:** P or the on-screen button
 
 ## Flow
-- **Launch Run:** Endless scoring sprint with accelerating cube walls, enemy craft, and a growing multiplier.
+- **Launch Run:** Endless scoring sprint with accelerating cube walls, enemy craft, and a growing multiplier. The launch button and Enter/Space both drop you straight into the run.
 - **Practice Loop:** Same feel without worrying about separate progression.
 
 Maintain your multiplier by dodging or blasting cubes and hostile enemies. Colliding or taking laser hits drains shields and hull; break apart and the run ends with an explosion.

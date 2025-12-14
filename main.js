@@ -13,19 +13,19 @@ const hud = {
 };
 
 const COLORS = {
-  sky: '#06080f',
-  horizon: '#101726',
-  floor: '#9ba6b8',
-  lane: '#aab3c2',
-  cubePalette: ['#c6d2e0', '#9fb0c4', '#f45d5d'],
-  player: '#6cf4ff',
-  bolt: '#b7fbff',
-  enemy: '#c9d0ff',
-  enemyGlow: '#ff9f6a',
-  uiAccent: '#7addff',
-  wallOuter: '#111827',
-  wallInner: '#1f2d42',
-  wallGlow: '#ff7657',
+  sky: '#04070f',
+  horizon: '#0c1424',
+  floor: '#8fa0b6',
+  lane: '#b6c1cf',
+  cubePalette: ['#b7c7db', '#9caac1', '#6c88ad'],
+  player: '#9de7ff',
+  bolt: '#c6f7ff',
+  enemy: '#d5dcff',
+  enemyGlow: '#ffb072',
+  uiAccent: '#8cd4ff',
+  wallOuter: '#0e1524',
+  wallInner: '#1b2536',
+  wallGlow: '#8ad0ff',
 };
 
 const GAME = {
@@ -65,12 +65,12 @@ const player = {
 };
 
 const settings = {
-  laneSpacing: 90,
+  laneSpacing: 96,
   laneCount: 9,
   baseSpeed: 360,
-  spawnInterval: 1.05,
-  enemyInterval: 2.4,
-  wobble: 14,
+  spawnInterval: 1.1,
+  enemyInterval: 2.3,
+  wobble: 16,
 };
 
 let cubes = [];
@@ -149,7 +149,7 @@ function spawnRow() {
   const lanes = settings.laneCount;
   const spacing = settings.laneSpacing;
   const gaps = new Set();
-  const gapCount = Math.random() > 0.55 ? 2 : 1;
+  const gapCount = Math.random() > 0.45 ? 2 : 1;
   while (gaps.size < gapCount) {
     gaps.add(Math.floor(Math.random() * lanes));
   }
@@ -447,9 +447,9 @@ function drawWalls() {
   const wallHeight = 320;
 
   const leftNear = project(-half, nearZ);
-  const leftFar = project(-half - 20, farZ);
+  const leftFar = project(-half - 36, farZ);
   const rightNear = project(half, nearZ);
-  const rightFar = project(half + 20, farZ);
+  const rightFar = project(half + 36, farZ);
 
   const leftTopNear = leftNear.y - wallHeight * leftNear.scale;
   const leftTopFar = leftFar.y - wallHeight * leftFar.scale;
@@ -457,7 +457,7 @@ function drawWalls() {
   const rightTopFar = rightFar.y - wallHeight * rightFar.scale;
 
   ctx.save();
-  const leftGrad = ctx.createLinearGradient(leftNear.x, leftNear.y, leftNear.x - 60, leftTopNear);
+  const leftGrad = ctx.createLinearGradient(leftNear.x, leftNear.y, leftNear.x - 80, leftTopNear);
   leftGrad.addColorStop(0, COLORS.wallOuter);
   leftGrad.addColorStop(1, COLORS.wallInner);
   ctx.fillStyle = leftGrad;
@@ -469,7 +469,7 @@ function drawWalls() {
   ctx.closePath();
   ctx.fill();
 
-  const rightGrad = ctx.createLinearGradient(rightNear.x, rightNear.y, rightNear.x + 60, rightTopNear);
+  const rightGrad = ctx.createLinearGradient(rightNear.x, rightNear.y, rightNear.x + 80, rightTopNear);
   rightGrad.addColorStop(0, COLORS.wallOuter);
   rightGrad.addColorStop(1, COLORS.wallInner);
   ctx.fillStyle = rightGrad;
@@ -482,7 +482,7 @@ function drawWalls() {
   ctx.fill();
 
   ctx.strokeStyle = COLORS.wallGlow;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(leftNear.x, leftTopNear + 6);
   ctx.lineTo(leftFar.x, leftTopFar + 6);
@@ -672,16 +672,33 @@ function bindInput() {
   });
 }
 
+function handleAction(action) {
+  if (action === 'start') resetGame(false);
+  if (action === 'practice') resetGame(true);
+  if (action === 'restart') resetGame(GAME.practice);
+  if (action === 'menu') setupMenu();
+}
+
 hud.pause.addEventListener('click', pauseToggle);
 
 hud.screen.addEventListener('click', (e) => {
   const actionEl = e.target.closest('[data-action]');
   if (!actionEl) return;
-  const action = actionEl.dataset.action;
-  if (action === 'start') resetGame(false);
-  if (action === 'practice') resetGame(true);
-  if (action === 'restart') resetGame(GAME.practice);
-  if (action === 'menu') setupMenu();
+  handleAction(actionEl.dataset.action);
+});
+
+document.addEventListener('click', (e) => {
+  if (!hud.screen.classList.contains('active')) return;
+  const actionEl = e.target.closest('[data-action]');
+  if (actionEl) handleAction(actionEl.dataset.action);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (!hud.screen.classList.contains('active')) return;
+  if (e.code === 'Enter' || e.code === 'Space') {
+    e.preventDefault();
+    handleAction('start');
+  }
 });
 
 function setupMenu() {
