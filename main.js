@@ -13,14 +13,17 @@ const hud = {
 };
 
 const COLORS = {
-  sky: '#0b0f1a',
-  horizon: '#1a1f2c',
-  floor: '#d4d6db',
-  lane: '#bbbcc2',
-  cubePalette: ['#fce46d', '#ffb449', '#ff834f'],
+  sky: '#06080f',
+  horizon: '#101726',
+  floor: '#9ba6b8',
+  lane: '#aab3c2',
+  cubePalette: ['#c6d2e0', '#9fb0c4', '#f45d5d'],
   player: '#6cf4ff',
   bolt: '#b7fbff',
   uiAccent: '#7addff',
+  wallOuter: '#111827',
+  wallInner: '#1f2d42',
+  wallGlow: '#ff7657',
 };
 
 const GAME = {
@@ -59,11 +62,11 @@ const player = {
 };
 
 const settings = {
-  laneSpacing: 80,
+  laneSpacing: 90,
   laneCount: 9,
   baseSpeed: 360,
-  spawnInterval: 0.95,
-  wobble: 16,
+  spawnInterval: 1.05,
+  wobble: 14,
 };
 
 let cubes = [];
@@ -315,6 +318,69 @@ function drawFloor() {
   }
 }
 
+function drawWalls() {
+  const half = ((settings.laneCount - 1) * settings.laneSpacing * 0.5) + 70;
+  const nearZ = 100;
+  const farZ = 1400;
+  const wallHeight = 320;
+
+  const leftNear = project(-half, nearZ);
+  const leftFar = project(-half - 20, farZ);
+  const rightNear = project(half, nearZ);
+  const rightFar = project(half + 20, farZ);
+
+  const leftTopNear = leftNear.y - wallHeight * leftNear.scale;
+  const leftTopFar = leftFar.y - wallHeight * leftFar.scale;
+  const rightTopNear = rightNear.y - wallHeight * rightNear.scale;
+  const rightTopFar = rightFar.y - wallHeight * rightFar.scale;
+
+  ctx.save();
+  const leftGrad = ctx.createLinearGradient(leftNear.x, leftNear.y, leftNear.x - 60, leftTopNear);
+  leftGrad.addColorStop(0, COLORS.wallOuter);
+  leftGrad.addColorStop(1, COLORS.wallInner);
+  ctx.fillStyle = leftGrad;
+  ctx.beginPath();
+  ctx.moveTo(leftNear.x, leftNear.y);
+  ctx.lineTo(leftFar.x, leftFar.y);
+  ctx.lineTo(leftFar.x, leftTopFar);
+  ctx.lineTo(leftNear.x, leftTopNear);
+  ctx.closePath();
+  ctx.fill();
+
+  const rightGrad = ctx.createLinearGradient(rightNear.x, rightNear.y, rightNear.x + 60, rightTopNear);
+  rightGrad.addColorStop(0, COLORS.wallOuter);
+  rightGrad.addColorStop(1, COLORS.wallInner);
+  ctx.fillStyle = rightGrad;
+  ctx.beginPath();
+  ctx.moveTo(rightNear.x, rightNear.y);
+  ctx.lineTo(rightFar.x, rightFar.y);
+  ctx.lineTo(rightFar.x, rightTopFar);
+  ctx.lineTo(rightNear.x, rightTopNear);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = COLORS.wallGlow;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(leftNear.x, leftTopNear + 6);
+  ctx.lineTo(leftFar.x, leftTopFar + 6);
+  ctx.moveTo(rightNear.x, rightTopNear + 6);
+  ctx.lineTo(rightFar.x, rightTopFar + 6);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.2;
+  for (let z = 160; z < 1400; z += 240) {
+    const left = project(-half + 6, z);
+    const right = project(half - 6, z);
+    ctx.fillStyle = COLORS.wallGlow;
+    ctx.beginPath();
+    ctx.arc(left.x, left.y - 60 * left.scale, 6 * left.scale + 1, 0, Math.PI * 2);
+    ctx.arc(right.x, right.y - 60 * right.scale, 6 * right.scale + 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawShip() {
   const pos = project(player.x, player.z);
   ctx.save();
@@ -339,13 +405,20 @@ function drawCubes() {
     const yOffset = size * 0.5;
     ctx.save();
     ctx.translate(pos.x, pos.y);
-    ctx.fillStyle = c.color;
-    ctx.strokeStyle = '#222';
+    const face = ctx.createLinearGradient(0, -yOffset, 0, size * 0.6);
+    face.addColorStop(0, '#f2f5fb');
+    face.addColorStop(0.35, c.color);
+    face.addColorStop(1, '#293344');
+    ctx.fillStyle = face;
+    ctx.strokeStyle = '#1a1f2e';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.rect(-size / 2, -yOffset, size, size);
     ctx.fill();
     ctx.stroke();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = COLORS.wallGlow;
+    ctx.fillRect(-size / 2, -yOffset + size * 0.28, size, 6);
     ctx.restore();
   });
 }
@@ -363,6 +436,7 @@ function drawBackground() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawStars();
   drawFloor();
+  drawWalls();
 }
 
 function triggerGameOver(reason) {
