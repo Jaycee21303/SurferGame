@@ -302,6 +302,9 @@ function handleCollisions() {
       }
     }
   }
+  GAME.distance += speed * dt;
+  GAME.score += dt * 8;
+}
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
