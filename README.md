@@ -1,26 +1,26 @@
-# Trenchfire: Starfall Run
+# Cube Run: Trenchfire
 
-A fast, canvas-driven trench run shooter built for GitHub Pages. Drift with asteroid-like handling through a narrow exhaust trench, spray unlimited bolts, and slam the core vent before it seals.
+A cubefield-style trench runner rebuilt for GitHub Pages. Drift with asteroid-inspired handling, spray unlimited bolts, and thread ever-tighter cube walls to chase distance.
 
 ## Play
-Open `index.html` locally or deploy the repository to GitHub Pages. Everything is client-side — no build steps or dependencies.
+Open `index.html` locally or deploy the repository to GitHub Pages. No build steps or dependencies.
 
 ## Controls
 - **Move:** WASD / Arrow Keys (momentum-based)
 - **Fire:** Hold Space / K (unlimited)
 - **Pause:** P or the on-screen button
 
-## Modes & Flow
-- **Launch Sortie:** Three escalating passes that tighten the trench and end in the Core Vent fight.
-- **Practice Loop:** Endless scoring loop to drill handling without level progression.
+## Flow
+- **Launch Run:** Endless scoring sprint with accelerating cube walls and a growing multiplier.
+- **Practice Loop:** Same feel without worrying about separate progression.
 
-Maintain your multiplier by chaining hits. Shields soften impacts; hull damage ends the run.
+Maintain your multiplier by dodging or blasting cubes. Colliding drains shields and hull; break apart and the run ends.
 
 ## Structure
-- `index.html` — Markup and UI overlays.
-- `style.css` — HUD, cards, and trench framing.
-- `main.js` — Game loop, spawning, collision, rendering, and flight handling.
+- `index.html` — Markup and overlays for launch/game over.
+- `style.css` — HUD, cards, and backdrop styling.
+- `main.js` — Canvas loop, pseudo-3D projection, spawning, collisions, and controls.
 
 ## Notes
-- Tuned for 1200x720 but scales fluidly down to mobile widths.
+- Tuned for 1200x720 canvas; scales fluidly down to mobile widths.
 - Pure canvas — instant loads and GitHub Pages friendly.
