@@ -1,31 +1,63 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Surfer Slider</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trenchfire: Starfall Run</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="hud">
-    <div>
-      <h1>Surfer Slider</h1>
-      <p>Ride the rolling waves! Hold <strong>Space</strong> to dive, then release to launch.</p>
-    </div>
-    <div class="stats">
-      <span id="speed">Speed: 0</span>
-      <span id="distance">Distance: 0 m</span>
-      <span id="height">Height: 0</span>
-    </div>
-  </header>
+  <div id="backdrop"></div>
+  <canvas id="gameCanvas" width="1200" height="720" aria-label="Trench run battlefield"></canvas>
 
-  <main>
-    <canvas id="game" aria-label="Surfer Slider game" tabindex="0"></canvas>
-    <section class="info">
-      <p>Use your timing to dive downhill and launch off the next wave. Hold space to tuck and gain speed, release off an uphill face to pop into the air. Press <strong>R</strong> to restart.</p>
-    </section>
-  </main>
+  <div id="hud">
+    <div class="hud-left">
+      <div class="logo">Trenchfire</div>
+      <div class="stat"><span class="label">Hull</span><div class="bar" id="hullBar"><span></span></div></div>
+      <div class="stat"><span class="label">Shields</span><div class="bar" id="shieldBar"><span></span></div></div>
+    </div>
+    <div class="hud-center">
+      <div class="stat inline"><span class="label">Score</span><span id="score">0</span></div>
+      <div class="stat inline"><span class="label">Multiplier</span><span id="multiplier">x1.0</span></div>
+      <div class="stat inline"><span class="label">Wave</span><span id="wave">0 / 0</span></div>
+    </div>
+    <div class="hud-right">
+      <button id="pauseButton" aria-label="Pause or resume">Pause</button>
+    </div>
+  </div>
 
-  <script src="main.js"></script>
+  <section id="screen" class="active">
+    <div class="panel">
+      <p class="tag">PRELAUNCH BRIEF</p>
+      <h1>Trenchfire: Starfall Run</h1>
+      <p class="lead">Dive into the star-forged trench. Evade plasma walls, shred interceptors, and deliver the core strike. Built for fast runs on desktop or mobile with gamepad-ready controls.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Flight Controls</h3>
+          <ul>
+            <li><strong>Move:</strong> WASD / Arrow Keys / Left Stick</li>
+            <li><strong>Fire:</strong> Space / A Button</li>
+            <li><strong>Boost:</strong> Shift / Right Trigger</li>
+            <li><strong>Pause:</strong> P</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Objective</h3>
+          <p>Stay inside the trench, break through turrets and interceptors, then land the finishing shot on the Core Gate. Keep your multiplier alive for elite scores.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="startButton">Launch Sortie</button>
+        <button id="practiceButton" class="ghost">Practice Loop</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="overlay" aria-live="polite"></section>
+
+  <script src="main.js" type="module"></script>
 </body>
 </html>
