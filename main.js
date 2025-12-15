@@ -2,47 +2,39 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const hud = {
-  hullBar: document.querySelector('#hullBar span'),
-  shieldBar: document.querySelector('#shieldBar span'),
+  armor: document.querySelector('#armorBar span'),
+  health: document.querySelector('#healthBar span'),
   score: document.getElementById('score'),
-  multiplier: document.getElementById('multiplier'),
   wave: document.getElementById('wave'),
+  distance: document.getElementById('distance'),
   overlay: document.getElementById('overlay'),
   screen: document.getElementById('screen'),
   pause: document.getElementById('pauseButton'),
 };
 
 const COLORS = {
-  sky: '#04070f',
-  horizon: '#0c1424',
-  floor: '#8fa0b6',
-  lane: '#b6c1cf',
-  cubePalette: ['#b7c7db', '#9caac1', '#6c88ad'],
-  player: '#9de7ff',
-  bolt: '#c6f7ff',
-  enemy: '#d5dcff',
-  enemyGlow: '#ffb072',
-  uiAccent: '#8cd4ff',
-  wallOuter: '#0e1524',
-  wallInner: '#1b2536',
-  wallGlow: '#8ad0ff',
+  sky: '#070910',
+  fog: '#0f1424',
+  neon: '#00f0ff',
+  mag: '#ff3f8e',
+  wall: '#0b0f1a',
+  reticle: '#f0f6ff',
+  bolt: '#9af5ff',
 };
+
+const camera = { focal: 620, height: 520, horizon: 0.62 };
 
 const GAME = {
   mode: 'menu',
   practice: false,
   lastTime: 0,
-  elapsed: 0,
   distance: 0,
   score: 0,
-  multiplier: 1,
+  wave: 1,
   spawnTimer: 0,
-  enemyTimer: 0,
-};
-
-const camera = {
-  focal: 520,
-  height: 420,
+  spawnRate: 1.35,
+  difficulty: 1,
+  paused: false,
 };
 
 const player = {
@@ -51,82 +43,71 @@ const player = {
   z: 0,
   vx: 0,
   vy: 0,
-  accel: 680,
+  accel: 900,
   maxSpeed: 540,
-  w: 28,
-  h: 26,
-  hull: 100,
-  shields: 60,
-  maxHull: 100,
-  maxShields: 60,
+  friction: 0.88,
+  health: 100,
+  armor: 80,
   fireCooldown: 0,
-  fireRate: 0.085,
-  invulnerable: 0,
+  fireRate: 0.12,
 };
 
-const settings = {
-  laneSpacing: 96,
-  laneCount: 9,
-  baseSpeed: 360,
-  spawnInterval: 1.1,
-  enemyInterval: 2.3,
-  wobble: 16,
-};
-
-let cubes = [];
+let rails = makeRails();
+let foes = [];
 let bolts = [];
-let stars = [];
-let enemies = [];
-let enemyBolts = [];
-let explosions = [];
+let sparks = [];
 
-const input = { keys: new Set() };
+const input = { keys: new Set(), mouseDown: false, mouse: { x: canvas.width / 2, y: canvas.height / 2 } };
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-function randChoice(list) {
-  return list[Math.floor(Math.random() * list.length)];
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
 }
 
 function resetGame(practice = false) {
   GAME.practice = practice;
   GAME.mode = 'running';
+  GAME.paused = false;
   GAME.lastTime = performance.now();
-  GAME.elapsed = 0;
   GAME.distance = 0;
   GAME.score = 0;
-  GAME.multiplier = 1;
-  GAME.spawnTimer = 0;
-  GAME.enemyTimer = 0.6;
-  cubes = [];
+  GAME.wave = 1;
+  GAME.spawnTimer = 0.8;
+  GAME.spawnRate = 1.3;
+  GAME.difficulty = 1;
+  rails = makeRails();
+  foes = [];
   bolts = [];
-  stars = createStars();
-  enemies = [];
-  enemyBolts = [];
-  explosions = [];
+  sparks = [];
   Object.assign(player, {
     x: 0,
     y: 0,
-    z: 0,
     vx: 0,
     vy: 0,
-    hull: player.maxHull,
-    shields: player.maxShields,
-    invulnerable: 0,
+    health: 100,
+    armor: 80,
     fireCooldown: 0,
   });
   hud.screen.classList.remove('active');
-  toast('Stay in the lane, thread the cubes, blast a path.');
+  toast(practice ? 'Zen fire enabled. No wave penalties.' : 'Rip through neon hell. Keep armor intact.');
 }
 
-function createStars() {
-  return Array.from({ length: 120 }, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    speed: 20 + Math.random() * 60,
-  }));
+function showMenu() {
+  GAME.mode = 'menu';
+  GAME.paused = false;
+  hud.screen.classList.add('active');
+}
+
+function makeRails() {
+  const segments = [];
+  const step = 120;
+  for (let i = 0; i < 36; i++) {
+    segments.push({ z: i * step + 120 });
+  }
+  return segments;
 }
 
 function toast(message) {
@@ -135,604 +116,343 @@ function toast(message) {
   note.textContent = message;
   hud.overlay.innerHTML = '';
   hud.overlay.appendChild(note);
-  setTimeout(() => note.remove(), 2200);
+  setTimeout(() => note.remove(), 2000);
 }
 
-function project(x, z) {
+function project(x, y, z) {
   const perspective = camera.focal / (camera.focal + z + 1);
   const screenX = canvas.width / 2 + x * perspective;
-  const screenY = canvas.height * 0.32 + (camera.height * perspective);
+  const screenY = canvas.height * camera.horizon - y * perspective + camera.height * perspective;
   return { x: screenX, y: screenY, scale: perspective };
 }
 
-function spawnRow() {
-  const lanes = settings.laneCount;
-  const spacing = settings.laneSpacing;
-  const gaps = new Set();
-  const gapCount = Math.random() > 0.45 ? 2 : 1;
-  while (gaps.size < gapCount) {
-    gaps.add(Math.floor(Math.random() * lanes));
+function spawnFoe() {
+  const lane = randRange(-380, 380);
+  const tierRoll = Math.random();
+  let hp = 2;
+  let speed = 420;
+  let size = 44;
+  let color = COLORS.neon;
+  let score = 120;
+
+  if (tierRoll > 0.65 + GAME.wave * 0.01) {
+    hp = 3;
+    speed = 340;
+    size = 56;
+    color = COLORS.mag;
+    score = 220;
   }
-  for (let i = 0; i < lanes; i++) {
-    if (gaps.has(i)) continue;
-    const x = (i - (lanes - 1) / 2) * spacing + (Math.random() - 0.5) * settings.wobble;
-    const size = 70 + Math.random() * 20;
-    cubes.push({
-      x,
-      z: 1400 + Math.random() * 60,
-      size,
-      color: randChoice(COLORS.cubePalette),
-      wobble: Math.random() * Math.PI * 2,
-    });
-  }
+
+  foes.push({ x: lane, y: randRange(-30, 60), z: 1600, size, hp, speed, color, score });
 }
 
-function spawnEnemy() {
-  const lanes = settings.laneCount;
-  const spacing = settings.laneSpacing;
-  const lane = Math.floor(Math.random() * lanes);
-  const x = (lane - (lanes - 1) / 2) * spacing + (Math.random() - 0.5) * settings.wobble;
-  const type = Math.random() > 0.6 ? 'turret' : 'interceptor';
-  enemies.push({
-    x,
-    z: 1400 + Math.random() * 160,
-    size: type === 'turret' ? 66 : 58,
-    wobble: Math.random() * Math.PI * 2,
-    type,
-    hp: type === 'turret' ? 2 : 1,
-    fireCooldown: 0.3 + Math.random() * 0.6,
-    fireRate: type === 'turret' ? 1.6 : 1.2,
-  });
+function shoot() {
+  if (player.fireCooldown > 0 || GAME.mode !== 'running' || GAME.paused) return;
+  const dirX = input.mouse.x - canvas.width / 2;
+  const dirY = input.mouse.y - canvas.height * camera.horizon;
+  const len = Math.max(1, Math.hypot(dirX, dirY));
+  const normX = dirX / len;
+  const normY = dirY / len;
+  const speed = 1600;
+  bolts.push({ x: player.x, y: player.y, z: 0, vx: normX * speed, vy: normY * speed, vz: speed * 1.1, life: 0 });
+  player.fireCooldown = player.fireRate;
+  sparks.push({ x: player.x * 0.2, y: player.y * 0.2, z: 40, life: 0.15, color: COLORS.neon });
 }
 
-function movePlayer(dt) {
+function updatePlayer(dt) {
   const left = input.keys.has('ArrowLeft') || input.keys.has('KeyA');
   const right = input.keys.has('ArrowRight') || input.keys.has('KeyD');
   const up = input.keys.has('ArrowUp') || input.keys.has('KeyW');
   const down = input.keys.has('ArrowDown') || input.keys.has('KeyS');
 
   const ax = (left ? -1 : 0) + (right ? 1 : 0);
-  const ay = (up ? -1 : 0) + (down ? 1 : 0);
+  const ay = (up ? 1 : 0) + (down ? -1 : 0);
   player.vx += ax * player.accel * dt;
   player.vy += ay * player.accel * dt;
+  player.vx *= player.friction;
+  player.vy *= player.friction;
 
-  player.vx *= 0.9;
-  player.vy *= 0.88;
+  player.x = clamp(player.x + player.vx * dt, -480, 480);
+  player.y = clamp(player.y + player.vy * dt, -120, 120);
 
-  const max = player.maxSpeed;
-  const speed = Math.hypot(player.vx, player.vy);
-  if (speed > max) {
-    player.vx = (player.vx / speed) * max;
-    player.vy = (player.vy / speed) * max;
-  }
+  if (player.fireCooldown > 0) player.fireCooldown -= dt;
+  if (input.mouseDown) shoot();
+}
 
-  player.x += player.vx * dt;
-  player.y += player.vy * dt;
-
-  const halfWidth = (settings.laneCount / 2) * settings.laneSpacing;
-  player.x = clamp(player.x, -halfWidth + 40, halfWidth - 40);
-  player.y = clamp(player.y, -80, 80);
-
-  if ((input.keys.has('Space') || input.keys.has('KeyK')) && GAME.mode === 'running') {
-    firePlayer();
+function updateRails(dt) {
+  const speed = 620 + GAME.wave * 20;
+  for (const seg of rails) {
+    seg.z -= speed * dt;
+    if (seg.z < 20) {
+      seg.z += 3600;
+    }
   }
 }
 
-function firePlayer() {
-  if (player.fireCooldown > 0) return;
-  player.fireCooldown = player.fireRate;
-  const spread = [-20, 0, 20];
-  spread.forEach((offset) => {
-    bolts.push({ x: player.x + offset, z: player.z + 40, speed: 1100, life: 3.5 });
-  });
+function updateFoes(dt) {
+  const survivors = [];
+  for (const foe of foes) {
+    foe.z -= foe.speed * dt * (0.8 + GAME.wave * 0.05);
+    foe.x += Math.sin(foe.z * 0.01) * 10 * dt;
+    if (foe.z < 60) {
+      damagePlayer(16);
+      continue;
+    }
+    survivors.push(foe);
+  }
+  foes = survivors;
 }
 
 function updateBolts(dt) {
-  for (let i = bolts.length - 1; i >= 0; i--) {
-    const b = bolts[i];
-    b.z += b.speed * dt;
-    b.life -= dt;
-    if (b.life <= 0) bolts.splice(i, 1);
+  const shots = [];
+  for (const b of bolts) {
+    b.life += dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.z += b.vz * dt;
+    if (b.z > 2400 || b.life > 1.2) continue;
+    shots.push(b);
   }
+  bolts = shots;
 }
 
-function updateCubes(dt) {
-  const speed = settings.baseSpeed * (1 + GAME.elapsed * 0.03);
-  for (let i = cubes.length - 1; i >= 0; i--) {
-    const c = cubes[i];
-    c.z -= speed * dt;
-    c.wobble += dt * 1.8;
-    c.x += Math.sin(c.wobble) * 6 * dt;
-    if (c.z < -60) {
-      cubes.splice(i, 1);
-      GAME.score += 12 * GAME.multiplier;
-      GAME.multiplier = Math.min(8, GAME.multiplier + 0.02);
-    }
+function updateSparks(dt) {
+  const fx = [];
+  for (const s of sparks) {
+    s.life -= dt;
+    if (s.life <= 0) continue;
+    fx.push(s);
   }
-  GAME.distance += speed * dt;
-  GAME.score += dt * 8;
+  sparks = fx;
 }
 
-function updateEnemies(dt) {
-  const speed = settings.baseSpeed * (0.82 + GAME.elapsed * 0.025);
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const e = enemies[i];
-    e.z -= speed * dt;
-    e.wobble += dt * (e.type === 'interceptor' ? 2.2 : 1.6);
-    e.x += Math.sin(e.wobble) * (e.type === 'interceptor' ? 34 : 12) * dt;
-    e.fireCooldown -= dt;
-    if (e.fireCooldown <= 0 && e.z > 120) {
-      enemyBolts.push({ x: e.x, z: e.z, speed: -980, life: 2.6 });
-      e.fireCooldown = e.fireRate;
-    }
-    if (e.z < -160) {
-      enemies.splice(i, 1);
-    }
-  }
-}
-
-function updateEnemyBolts(dt) {
-  for (let i = enemyBolts.length - 1; i >= 0; i--) {
-    const b = enemyBolts[i];
-    b.z += b.speed * dt;
-    b.life -= dt;
-    if (b.life <= 0 || b.z < -120) enemyBolts.splice(i, 1);
-  }
-}
-
-function handleCollisions() {
-  for (let i = cubes.length - 1; i >= 0; i--) {
-    const cube = cubes[i];
-    // Player collision when cube reaches camera plane
-    if (Math.abs(cube.x - player.x) < (cube.size * 0.5 + player.w * 0.4) && Math.abs(cube.z - player.z) < cube.size * 0.65) {
-      applyDamage(34);
-      cubes.splice(i, 1);
-      addExplosion(cube.x, cube.z, cube.size * 0.4);
-      continue;
-    }
-    for (let j = bolts.length - 1; j >= 0; j--) {
-      const bolt = bolts[j];
-      if (bolt.z >= cube.z - cube.size && bolt.z <= cube.z + cube.size && Math.abs(bolt.x - cube.x) < cube.size * 0.45) {
-        bolts.splice(j, 1);
-        cubes.splice(i, 1);
-        GAME.score += 40 * GAME.multiplier;
-        GAME.multiplier = Math.min(8, GAME.multiplier + 0.12);
-        addExplosion(cube.x, cube.z, cube.size * 0.35);
-        break;
+function collide() {
+  const remainingFoes = [];
+  for (const foe of foes) {
+    let hit = false;
+    for (const b of bolts) {
+      const dx = foe.x - b.x;
+      const dy = foe.y - b.y;
+      const dz = foe.z - b.z;
+      if (dz < -40 || dz > 80) continue;
+      if (Math.hypot(dx, dy) < foe.size * 0.7) {
+        foe.hp -= 1;
+        b.life = 10;
+        hit = true;
+        sparks.push({ x: foe.x * 0.5, y: foe.y * 0.5, z: foe.z, life: 0.4, color: foe.color });
       }
     }
-  }
-  GAME.distance += speed * dt;
-  GAME.score += dt * 8;
-}
-
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const enemy = enemies[i];
-    if (Math.abs(enemy.x - player.x) < (enemy.size * 0.45 + player.w * 0.35) && Math.abs(enemy.z - player.z) < enemy.size * 0.65) {
-      applyDamage(40);
-      addExplosion(enemy.x, enemy.z, enemy.size * 0.5);
-      enemies.splice(i, 1);
+    if (foe.hp <= 0) {
+      GAME.score += foe.score;
       continue;
     }
-    for (let j = bolts.length - 1; j >= 0; j--) {
-      const bolt = bolts[j];
-      if (bolt.z >= enemy.z - enemy.size && bolt.z <= enemy.z + enemy.size && Math.abs(bolt.x - enemy.x) < enemy.size * 0.5) {
-        bolts.splice(j, 1);
-        enemy.hp -= 1;
-        if (enemy.hp <= 0) {
-          addExplosion(enemy.x, enemy.z, enemy.size * 0.6);
-          enemies.splice(i, 1);
-          GAME.score += 90 * GAME.multiplier;
-          GAME.multiplier = Math.min(9, GAME.multiplier + 0.18);
-        }
-        break;
-      }
-    }
+    remainingFoes.push(foe);
   }
+  foes = remainingFoes;
+}
 
-  for (let i = enemyBolts.length - 1; i >= 0; i--) {
-    const bolt = enemyBolts[i];
-    if (Math.abs(bolt.x - player.x) < 26 && bolt.z <= player.z + 42) {
-      enemyBolts.splice(i, 1);
-      applyDamage(26);
-      addExplosion(player.x, player.z + 40, 26);
-    }
+function damagePlayer(amount) {
+  if (GAME.practice) return;
+  const armorBlock = Math.min(player.armor, amount * 0.7);
+  player.armor = clamp(player.armor - armorBlock, 0, 120);
+  const leftover = amount - armorBlock;
+  player.health = clamp(player.health - leftover, 0, 120);
+  if (player.health <= 0) endRun();
+  toast('Impact! Armor compromised.');
+}
+
+function endRun() {
+  GAME.mode = 'ended';
+  hud.screen.classList.add('active');
+  hud.screen.querySelector('.panel').innerHTML = `
+    <p class="tag">DEPLOYMENT FAILED</p>
+    <h1>Run Shattered</h1>
+    <p class="lead">Distance ${GAME.distance.toFixed(0)}m · Wave ${GAME.wave} · Score ${GAME.score}</p>
+    <div class="actions">
+      <button data-action="start">Retry the Corridor</button>
+      <button data-action="practice" class="ghost">Zen Fire</button>
+    </div>
+  `;
+}
+
+function updateDifficulty(dt) {
+  GAME.distance += dt * 240;
+  const waveTarget = 1 + Math.floor(GAME.distance / 800);
+  if (waveTarget > GAME.wave) {
+    GAME.wave = waveTarget;
+    GAME.spawnRate = Math.max(0.55, GAME.spawnRate - 0.05);
+    toast(`Wave ${GAME.wave}: more hostiles.`);
   }
-}
-
-function applyDamage(amount) {
-  if (player.invulnerable > 0) return;
-  const shieldHit = Math.min(player.shields, amount * 0.7);
-  player.shields -= shieldHit;
-  player.hull -= (amount - shieldHit);
-  player.invulnerable = 1.1;
-  GAME.multiplier = Math.max(1, GAME.multiplier - 0.35);
-  if (player.hull <= 0) triggerGameOver('Your hull failed in the trench.');
-}
-
-function addExplosion(x, z, power = 28) {
-  explosions.push({ x, z, life: 0.6, power });
-}
-
-function updateHUD() {
-  const hullRatio = player.hull / player.maxHull;
-  const shieldRatio = player.shields / player.maxShields;
-  hud.hullBar.style.width = `${clamp(hullRatio * 100, 0, 100)}%`;
-  hud.shieldBar.style.width = `${clamp(shieldRatio * 100, 0, 100)}%`;
-  hud.score.textContent = Math.floor(GAME.score).toLocaleString();
-  hud.multiplier.textContent = `x${GAME.multiplier.toFixed(1)}`;
-  hud.wave.textContent = `${Math.floor(GAME.distance / 1000)} km`;
-}
-
-function updateStars(dt) {
-  stars.forEach((s) => {
-    s.y += s.speed * dt;
-    if (s.y > canvas.height) {
-      s.y = 0;
-      s.x = Math.random() * canvas.width;
-    }
-  });
-}
-
-function updateExplosions(dt) {
-  for (let i = explosions.length - 1; i >= 0; i--) {
-    const e = explosions[i];
-    e.life -= dt;
-    if (e.life <= 0) explosions.splice(i, 1);
+  GAME.spawnTimer -= dt;
+  if (GAME.spawnTimer <= 0) {
+    spawnFoe();
+    GAME.spawnTimer = GAME.spawnRate * randRange(0.7, 1.2);
   }
 }
 
-function drawStars() {
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  stars.forEach((s) => {
-    ctx.fillRect(s.x, s.y, 2, 2);
-  });
-}
-
-function drawExplosions() {
-  explosions.forEach((e) => {
-    const pos = project(e.x, e.z);
-    const alpha = clamp(e.life / 0.6, 0, 1);
-    const size = e.power * pos.scale * (1.2 - alpha * 0.4);
-    const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, size);
-    grad.addColorStop(0, `rgba(255, 211, 140, ${alpha})`);
-    grad.addColorStop(0.5, `rgba(255, 126, 84, ${alpha * 0.8})`);
-    grad.addColorStop(1, 'rgba(30,20,10,0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
-
-function drawFloor() {
-  const w = canvas.width;
-  const h = canvas.height;
-  const horizon = h * 0.32;
-  const gradient = ctx.createLinearGradient(0, horizon, 0, h);
-  gradient.addColorStop(0, COLORS.horizon);
-  gradient.addColorStop(1, COLORS.floor);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, horizon, w, h - horizon);
-
-  ctx.strokeStyle = '#9fa3ad';
-  ctx.lineWidth = 2;
-  const lanes = settings.laneCount;
-  const spacing = settings.laneSpacing;
-  for (let i = -lanes; i <= lanes; i++) {
-    const x = i * spacing * 0.5;
-    const p0 = project(x, 1200);
-    const p1 = project(x, 80);
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.stroke();
-  }
-
-  for (let z = 200; z < 1400; z += 180) {
-    const p0 = project(-settings.laneSpacing * lanes, z);
-    const p1 = project(settings.laneSpacing * lanes, z);
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.strokeStyle = z % 360 === 0 ? '#c0c2c7' : '#a8acb5';
-    ctx.stroke();
-  }
-}
-
-function drawWalls() {
-  const half = ((settings.laneCount - 1) * settings.laneSpacing * 0.5) + 70;
-  const nearZ = 100;
-  const farZ = 1400;
-  const wallHeight = 320;
-
-  const leftNear = project(-half, nearZ);
-  const leftFar = project(-half - 36, farZ);
-  const rightNear = project(half, nearZ);
-  const rightFar = project(half + 36, farZ);
-
-  const leftTopNear = leftNear.y - wallHeight * leftNear.scale;
-  const leftTopFar = leftFar.y - wallHeight * leftFar.scale;
-  const rightTopNear = rightNear.y - wallHeight * rightNear.scale;
-  const rightTopFar = rightFar.y - wallHeight * rightFar.scale;
-
-  ctx.save();
-  const leftGrad = ctx.createLinearGradient(leftNear.x, leftNear.y, leftNear.x - 80, leftTopNear);
-  leftGrad.addColorStop(0, COLORS.wallOuter);
-  leftGrad.addColorStop(1, COLORS.wallInner);
-  ctx.fillStyle = leftGrad;
-  ctx.beginPath();
-  ctx.moveTo(leftNear.x, leftNear.y);
-  ctx.lineTo(leftFar.x, leftFar.y);
-  ctx.lineTo(leftFar.x, leftTopFar);
-  ctx.lineTo(leftNear.x, leftTopNear);
-  ctx.closePath();
-  ctx.fill();
-
-  const rightGrad = ctx.createLinearGradient(rightNear.x, rightNear.y, rightNear.x + 80, rightTopNear);
-  rightGrad.addColorStop(0, COLORS.wallOuter);
-  rightGrad.addColorStop(1, COLORS.wallInner);
-  ctx.fillStyle = rightGrad;
-  ctx.beginPath();
-  ctx.moveTo(rightNear.x, rightNear.y);
-  ctx.lineTo(rightFar.x, rightFar.y);
-  ctx.lineTo(rightFar.x, rightTopFar);
-  ctx.lineTo(rightNear.x, rightTopNear);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = COLORS.wallGlow;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(leftNear.x, leftTopNear + 6);
-  ctx.lineTo(leftFar.x, leftTopFar + 6);
-  ctx.moveTo(rightNear.x, rightTopNear + 6);
-  ctx.lineTo(rightFar.x, rightTopFar + 6);
-  ctx.stroke();
-
-  ctx.globalAlpha = 0.2;
-  for (let z = 160; z < 1400; z += 240) {
-    const left = project(-half + 6, z);
-    const right = project(half - 6, z);
-    ctx.fillStyle = COLORS.wallGlow;
-    ctx.beginPath();
-    ctx.arc(left.x, left.y - 60 * left.scale, 6 * left.scale + 1, 0, Math.PI * 2);
-    ctx.arc(right.x, right.y - 60 * right.scale, 6 * right.scale + 1, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawShip() {
-  const pos = project(player.x, player.z);
-  ctx.save();
-  ctx.translate(pos.x, pos.y);
-  const tilt = clamp(player.vx / player.maxSpeed, -0.6, 0.6);
-  ctx.rotate(tilt * 0.4);
-  ctx.fillStyle = COLORS.player;
-  ctx.beginPath();
-  ctx.moveTo(0, -player.h * pos.scale * 0.7);
-  ctx.lineTo(player.w * pos.scale * 0.7, player.h * pos.scale * 0.8);
-  ctx.lineTo(-player.w * pos.scale * 0.7, player.h * pos.scale * 0.8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawCubes() {
-  cubes.sort((a, b) => b.z - a.z);
-  cubes.forEach((c) => {
-    const pos = project(c.x, c.z);
-    const size = c.size * pos.scale;
-    const yOffset = size * 0.5;
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    const face = ctx.createLinearGradient(0, -yOffset, 0, size * 0.6);
-    face.addColorStop(0, '#f2f5fb');
-    face.addColorStop(0.35, c.color);
-    face.addColorStop(1, '#293344');
-    ctx.fillStyle = face;
-    ctx.strokeStyle = '#1a1f2e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.rect(-size / 2, -yOffset, size, size);
-    ctx.fill();
-    ctx.stroke();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = COLORS.wallGlow;
-    ctx.fillRect(-size / 2, -yOffset + size * 0.28, size, 6);
-    ctx.restore();
-  });
-}
-
-function drawEnemies() {
-  enemies.slice().sort((a, b) => b.z - a.z).forEach((e) => {
-    const pos = project(e.x, e.z);
-    const size = e.size * pos.scale;
-    ctx.save();
-    ctx.translate(pos.x, pos.y - size * 0.15);
-    ctx.scale(pos.scale, pos.scale);
-    ctx.fillStyle = COLORS.enemy;
-    ctx.strokeStyle = '#0f1421';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -size * 0.55);
-    ctx.lineTo(size * 0.4, size * 0.3);
-    ctx.lineTo(-size * 0.4, size * 0.3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = COLORS.enemyGlow;
-    ctx.fillRect(-size * 0.22, size * 0.1, size * 0.44, size * 0.12);
-    ctx.restore();
-  });
-}
-
-function drawBolts() {
-  bolts.forEach((b) => {
-    const pos = project(b.x, b.z);
-    ctx.fillStyle = COLORS.bolt;
-    ctx.fillRect(pos.x - 2, pos.y - 12, 4, 18);
-  });
-}
-
-function drawEnemyBolts() {
-  enemyBolts.forEach((b) => {
-    const pos = project(b.x, b.z);
-    ctx.fillStyle = COLORS.enemyGlow;
-    ctx.fillRect(pos.x - 2, pos.y - 18, 5, 24);
-  });
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground();
+  drawRails();
+  drawFoes();
+  drawBolts();
+  drawSparks();
+  drawReticle();
 }
 
 function drawBackground() {
-  ctx.fillStyle = COLORS.sky;
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, COLORS.sky);
+  gradient.addColorStop(camera.horizon, COLORS.fog);
+  gradient.addColorStop(1, '#060712');
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawStars();
-  drawFloor();
-  drawWalls();
+
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2 - 520, canvas.height * camera.horizon);
+  ctx.lineTo(canvas.width / 2 - 120, canvas.height);
+  ctx.moveTo(canvas.width / 2 + 520, canvas.height * camera.horizon);
+  ctx.lineTo(canvas.width / 2 + 120, canvas.height);
+  ctx.stroke();
 }
 
-function triggerGameOver(reason) {
-  GAME.mode = 'gameover';
-  const content = `
-    <div class="panel">
-      <p class="tag">Run Ended</p>
-      <h1>You bailed out</h1>
-      <p class="lead">${reason}</p>
-      <p>Score: ${Math.floor(GAME.score).toLocaleString()} · Distance: ${Math.floor(GAME.distance / 1000)} km</p>
-      <div class="actions">
-        <button data-action="restart">Run it back</button>
-        <button data-action="menu" class="ghost">Return to Briefing</button>
-      </div>
-    </div>`;
-  hud.screen.innerHTML = content;
-  hud.screen.classList.add('active');
-}
-
-function pauseToggle() {
-  if (GAME.mode === 'running') {
-    GAME.mode = 'paused';
-    toast('Paused');
-  } else if (GAME.mode === 'paused') {
-    GAME.mode = 'running';
-    GAME.lastTime = performance.now();
+function drawRails() {
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+  ctx.lineWidth = 2;
+  for (const seg of rails) {
+    const near = project(-520, 0, seg.z);
+    const nearRight = project(520, 0, seg.z);
+    ctx.beginPath();
+    ctx.moveTo(near.x, near.y);
+    ctx.lineTo(nearRight.x, nearRight.y);
+    ctx.stroke();
   }
 }
 
-function loop(time) {
-  const dt = (time - GAME.lastTime) / 1000;
-  GAME.lastTime = time;
+function drawFoes() {
+  for (const foe of foes) {
+    const p = project(foe.x, foe.y, foe.z);
+    const size = foe.size * p.scale;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.sin(foe.z * 0.02));
+    ctx.fillStyle = foe.color;
+    ctx.globalAlpha = 0.9;
+    ctx.shadowColor = foe.color;
+    ctx.shadowBlur = 28 * p.scale;
+    ctx.fillRect(-size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+}
 
-  if (GAME.mode === 'running') {
-    GAME.elapsed += dt;
-    GAME.spawnTimer -= dt;
-    GAME.enemyTimer -= dt;
-    player.invulnerable = Math.max(0, player.invulnerable - dt);
-    player.fireCooldown = Math.max(0, player.fireCooldown - dt);
-    movePlayer(dt);
+function drawBolts() {
+  ctx.strokeStyle = COLORS.bolt;
+  ctx.lineWidth = 2;
+  for (const b of bolts) {
+    const p = project(b.x, b.y, b.z);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x, p.y + 14 * p.scale);
+    ctx.stroke();
+  }
+}
+
+function drawSparks() {
+  for (const s of sparks) {
+    const p = project(s.x, s.y, s.z);
+    ctx.fillStyle = s.color || COLORS.bolt;
+    ctx.globalAlpha = clamp(s.life * 3, 0, 0.9);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 8 * p.scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawReticle() {
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height * camera.horizon);
+  ctx.strokeStyle = COLORS.reticle;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.8;
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
+  ctx.moveTo(-28, 0); ctx.lineTo(-10, 0);
+  ctx.moveTo(28, 0); ctx.lineTo(10, 0);
+  ctx.moveTo(0, -28); ctx.lineTo(0, -10);
+  ctx.moveTo(0, 28); ctx.lineTo(0, 10);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function updateHud() {
+  hud.score.textContent = Math.floor(GAME.score);
+  hud.wave.textContent = GAME.wave;
+  hud.distance.textContent = `${Math.floor(GAME.distance)} m`;
+  hud.health.style.width = `${(player.health / 100) * 100}%`;
+  hud.armor.style.width = `${(player.armor / 80) * 100}%`;
+}
+
+function gameLoop(timestamp) {
+  if (!GAME.lastTime) GAME.lastTime = timestamp;
+  const dt = Math.min((timestamp - GAME.lastTime) / 1000, 0.05);
+  GAME.lastTime = timestamp;
+
+  if (!GAME.paused && GAME.mode === 'running') {
+    updatePlayer(dt);
+    updateRails(dt);
+    updateDifficulty(dt);
+    updateFoes(dt);
     updateBolts(dt);
-    updateEnemyBolts(dt);
-    updateCubes(dt);
-    updateEnemies(dt);
-    updateExplosions(dt);
-    handleCollisions();
-    if (GAME.spawnTimer <= 0) {
-      spawnRow();
-      GAME.spawnTimer = settings.spawnInterval * clamp(1 - GAME.elapsed * 0.02, 0.45, 1.1);
-    }
-    if (GAME.enemyTimer <= 0) {
-      spawnEnemy();
-      GAME.enemyTimer = settings.enemyInterval * clamp(1 - GAME.elapsed * 0.018, 0.6, 1.4);
-    }
+    collide();
+    updateSparks(dt);
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBackground();
-  drawCubes();
-  drawEnemies();
-  drawBolts();
-  drawEnemyBolts();
-  drawExplosions();
-  drawShip();
-  updateHUD();
-  updateStars(dt);
-
-  requestAnimationFrame(loop);
+  render();
+  updateHud();
+  requestAnimationFrame(gameLoop);
 }
 
-function bindInput() {
-  window.addEventListener('keydown', (e) => {
-    input.keys.add(e.code);
-    if (e.code === 'Space') e.preventDefault();
-    if (e.code === 'KeyP') pauseToggle();
-  });
-  window.addEventListener('keyup', (e) => {
-    input.keys.delete(e.code);
-  });
+function togglePause() {
+  if (GAME.mode !== 'running') return;
+  GAME.paused = !GAME.paused;
+  toast(GAME.paused ? 'Paused' : 'Resumed');
 }
 
-function handleAction(action) {
-  if (action === 'start') resetGame(false);
-  if (action === 'practice') resetGame(true);
-  if (action === 'restart') resetGame(GAME.practice);
-  if (action === 'menu') setupMenu();
+function handleKey(e, pressed) {
+  if (e.code === 'Space' && pressed) {
+    input.mouseDown = true;
+    shoot();
+  }
+  if (!pressed && e.code === 'Space') input.mouseDown = false;
+  if (e.code === 'KeyP') {
+    if (pressed) togglePause();
+    return;
+  }
+  input.keys[pressed ? 'add' : 'delete'](e.code);
 }
 
-hud.pause.addEventListener('click', pauseToggle);
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  input.mouse.x = e.clientX - rect.left;
+  input.mouse.y = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mousedown', () => { input.mouseDown = true; shoot(); });
+window.addEventListener('mouseup', () => { input.mouseDown = false; });
+window.addEventListener('keydown', (e) => handleKey(e, true));
+window.addEventListener('keyup', (e) => handleKey(e, false));
+
+hud.pause.addEventListener('click', togglePause);
 
 hud.screen.addEventListener('click', (e) => {
-  const actionEl = e.target.closest('[data-action]');
-  if (!actionEl) return;
-  handleAction(actionEl.dataset.action);
+  const action = e.target.dataset.action;
+  if (action === 'start') resetGame(false);
+  if (action === 'practice') resetGame(true);
 });
 
-document.addEventListener('click', (e) => {
-  if (!hud.screen.classList.contains('active')) return;
-  const actionEl = e.target.closest('[data-action]');
-  if (actionEl) handleAction(actionEl.dataset.action);
-});
-
-document.addEventListener('keydown', (e) => {
-  if (!hud.screen.classList.contains('active')) return;
-  if (e.code === 'Enter' || e.code === 'Space') {
-    e.preventDefault();
-    handleAction('start');
-  }
-});
-
-function setupMenu() {
-  GAME.mode = 'menu';
-  const menuHtml = `
-    <div class="panel">
-      <p class="tag">BRIEFING</p>
-      <h1>Cube Run: Trenchfire</h1>
-      <p class="lead">Fly the exhaust trench like classic cubefield, but with drift handling and unlimited lasers. Thread the gaps, shoot cubes to clear a line, and push for distance.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>Flight</h3>
-          <ul>
-            <li><strong>Move:</strong> WASD / Arrow Keys</li>
-            <li><strong>Fire:</strong> Hold Space / K</li>
-            <li><strong>Pause:</strong> P</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Objective</h3>
-          <p>Dodge or destroy the cube walls. Your multiplier grows as you pass or blast; crashing ends the run.</p>
-        </div>
-      </div>
-      <div class="actions">
-        <button data-action="start">Launch Run</button>
-        <button data-action="practice" class="ghost">Practice Loop</button>
-      </div>
-    </div>`;
-  hud.screen.innerHTML = menuHtml;
-  hud.screen.classList.add('active');
-}
-
-bindInput();
-setupMenu();
-GAME.lastTime = performance.now();
-stars = createStars();
-requestAnimationFrame(loop);
+showMenu();
+updateHud();
+requestAnimationFrame(gameLoop);
