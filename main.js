@@ -52,7 +52,7 @@ const player = {
   fireRate: 0.12,
 };
 
-let rails = [];
+let rails = makeRails();
 let foes = [];
 let bolts = [];
 let sparks = [];
@@ -93,6 +93,12 @@ function resetGame(practice = false) {
   });
   hud.screen.classList.remove('active');
   toast(practice ? 'Zen fire enabled. No wave penalties.' : 'Rip through neon hell. Keep armor intact.');
+}
+
+function showMenu() {
+  GAME.mode = 'menu';
+  GAME.paused = false;
+  hud.screen.classList.add('active');
 }
 
 function makeRails() {
@@ -390,7 +396,7 @@ function updateHud() {
 }
 
 function gameLoop(timestamp) {
-  if (GAME.mode === 'menu') return requestAnimationFrame(gameLoop);
+  if (!GAME.lastTime) GAME.lastTime = timestamp;
   const dt = Math.min((timestamp - GAME.lastTime) / 1000, 0.05);
   GAME.lastTime = timestamp;
 
@@ -447,12 +453,6 @@ hud.screen.addEventListener('click', (e) => {
   if (action === 'practice') resetGame(true);
 });
 
-resetGame(true);
-GAME.mode = 'menu';
-hud.screen.classList.add('active');
-hud.screen.querySelector('.panel').innerHTML = hud.screen.querySelector('.panel').innerHTML;
-
-requestAnimationFrame((ts) => {
-  GAME.lastTime = ts;
-  requestAnimationFrame(gameLoop);
-});
+showMenu();
+updateHud();
+requestAnimationFrame(gameLoop);
