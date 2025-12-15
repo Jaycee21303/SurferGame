@@ -1,26 +1,25 @@
-# Cube Run: Trenchfire
+# Neon Hell: Corridor
 
-A cubefield-style trench runner rebuilt for GitHub Pages. Drift with asteroid-inspired handling, spray unlimited bolts, and thread ever-tighter Imperial-blue cube walls while dueling trench sentries to chase distance.
+A neon-drenched, browser-first corridor shooter inspired by Doom corridors and Tron grids. Strafe a glowing trench in first-person, snap headshots with a central reticle, and ride escalating waves of hellspawn.
 
 ## Play
-Open `index.html` locally or deploy the repository to GitHub Pages. No build steps or dependencies.
+Open `index.html` locally or deploy the repository to GitHub Pages. No build tooling or external assets required.
 
 ## Controls
-- **Move:** WASD / Arrow Keys (momentum-based)
-- **Fire:** Hold Space / K (unlimited)
+- **Move:** WASD / Arrow Keys (strafe + pitch)
+- **Fire:** Hold Space or Left Click (auto-fire)
 - **Pause:** P or the on-screen button
 
 ## Flow
-- **Launch Run:** Endless scoring sprint with accelerating cube walls, enemy craft, and a growing multiplier. The launch button and Enter/Space both drop you straight into the run.
-- **Practice Loop:** Same feel without worrying about separate progression.
-
-Maintain your multiplier by dodging or blasting cubes and hostile enemies. Colliding or taking laser hits drains shields and hull; break apart and the run ends with an explosion.
+- Enemies stream down a neon trench. Strafe to dodge, aim with the mouse, and melt them before they breach your armor.
+- Distance raises the wave count, tightening spawn timings and enemy health.
+- Practice mode keeps the vibe without punishing damage.
 
 ## Structure
-- `index.html` — Markup and overlays for launch/game over.
-- `style.css` — HUD, cards, and backdrop styling.
-- `main.js` — Canvas loop, pseudo-3D projection, spawning, collisions, and controls.
+- `index.html` — Minimal markup and overlays for the corridor briefing.
+- `style.css` — Tron-inspired HUD and panel styling for GitHub Pages.
+- `main.js` — Canvas renderer, pseudo-3D projection, enemy waves, and firing logic.
 
 ## Notes
-- Tuned for 1200x720 canvas; scales fluidly down to mobile widths.
-- Pure canvas — instant loads and GitHub Pages friendly.
+- Tuned for a 1200x720 canvas but scales fluidly down to mobile widths.
+- Pure canvas — instant loads and pages-friendly.

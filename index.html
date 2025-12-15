@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cube Run: Trenchfire</title>
+  <title>Neon Hell: Corridor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Space+Grotesk:wght@400;600&display=swap"
- rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="backdrop"></div>
-  <canvas id="gameCanvas" width="1200" height="720" aria-label="Cube trench run"></canvas>
+  <canvas id="gameCanvas" width="1200" height="720" aria-label="Neon corridor"></canvas>
 
   <div id="hud">
     <div class="hud-left">
-      <div class="logo">Trenchfire</div>
-      <div class="stat"><span class="label">Hull</span><div class="bar" id="hullBar"><span></span></div></div>
-      <div class="stat"><span class="label">Shields</span><div class="bar" id="shieldBar"><span></span></div></div>
+      <div class="logo">Neon Hell</div>
+      <div class="stat"><span class="label">Armor</span><div class="bar" id="armorBar"><span></span></div></div>
+      <div class="stat"><span class="label">Vitals</span><div class="bar" id="healthBar"><span></span></div></div>
     </div>
     <div class="hud-center">
       <div class="stat inline"><span class="label">Score</span><span id="score">0</span></div>
-      <div class="stat inline"><span class="label">Multiplier</span><span id="multiplier">x1.0</span></div>
-      <div class="stat inline"><span class="label">Distance</span><span id="wave">0 km</span></div>
+      <div class="stat inline"><span class="label">Wave</span><span id="wave">1</span></div>
+      <div class="stat inline"><span class="label">Distance</span><span id="distance">0 m</span></div>
     </div>
     <div class="hud-right">
       <button id="pauseButton" aria-label="Pause or resume">Pause</button>
@@ -32,26 +31,26 @@
 
   <section id="screen" class="active">
     <div class="panel">
-      <p class="tag">BRIEFING</p>
-      <h1>Cube Run: Trenchfire</h1>
-      <p class="lead">Fly a narrow exhaust trench like classic cubefield, but with drift-heavy handling and endless bolts. Thread gaps, blast cubes and hostile craft, and push distance through the trench.</p>
+      <p class="tag">NEON MISSION</p>
+      <h1>Neon Hell: Corridor</h1>
+      <p class="lead">A browser-ready, Tron-styled corridor shooter. Strafe a glowing trench in first-person, snap headshots downrange, and fight off endless hellspawn.</p>
       <div class="grid">
         <div class="card">
-          <h3>Flight</h3>
+          <h3>Core</h3>
           <ul>
             <li><strong>Move:</strong> WASD / Arrow Keys</li>
-            <li><strong>Fire:</strong> Hold Space / K</li>
+            <li><strong>Fire:</strong> Hold Space or Left Click</li>
             <li><strong>Pause:</strong> P</li>
           </ul>
         </div>
         <div class="card">
-          <h3>Objective</h3>
-          <p>Dodge or destroy cube walls and hostile sentries. Maintain your multiplier by passing or blasting without crashing.</p>
+          <h3>Loop</h3>
+          <p>Waves intensify as distance climbs. Aim with the mouse, strafe through neon debris, and keep armor up by avoiding hits.</p>
         </div>
       </div>
       <div class="actions">
-        <button data-action="start">Launch Run</button>
-        <button data-action="practice" class="ghost">Practice Loop</button>
+        <button data-action="start">Enter the Corridor</button>
+        <button data-action="practice" class="ghost">Zen Fire (Practice)</button>
       </div>
     </div>
   </section>
